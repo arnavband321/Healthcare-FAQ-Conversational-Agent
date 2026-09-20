@@ -11,6 +11,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <!-- Marked for markdown rendering -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <!-- MediAssist Config File -->
+    <script src="config.js"></script>
     <style>
         :root {
             --bg-primary: #070d18;
@@ -20,6 +22,7 @@
             --border-color: #334155;
             --accent-cyan: #06b6d4;
             --accent-emerald: #10b981;
+            --accent-amber: #f59e0b;
             --accent-red: #ef4444;
             --text-primary: #f8fafc;
             --text-secondary: #94a3b8;
@@ -93,7 +96,7 @@
         .header-actions {
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 10px;
         }
 
         .status-badge {
@@ -107,23 +110,36 @@
             padding: 5px 10px;
             border-radius: 9999px;
             font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .status-badge.warning {
+            color: var(--accent-amber);
+            background: rgba(245, 158, 11, 0.1);
+            border-color: rgba(245, 158, 11, 0.3);
+        }
+
+        .status-badge.offline {
+            color: var(--accent-red);
+            background: rgba(239, 68, 68, 0.1);
+            border-color: rgba(239, 68, 68, 0.3);
         }
 
         .pulse-dot {
             width: 7px;
             height: 7px;
-            background-color: var(--accent-emerald);
+            background-color: currentColor;
             border-radius: 50%;
             animation: pulse 2s infinite;
         }
 
         @keyframes pulse {
-            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
-            70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
-            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+            0% { transform: scale(0.95); opacity: 0.9; }
+            70% { transform: scale(1.15); opacity: 0.4; }
+            100% { transform: scale(0.95); opacity: 0.9; }
         }
 
-        .btn-clear {
+        .btn-header {
             background: transparent;
             border: 1px solid var(--border-color);
             color: var(--text-secondary);
@@ -133,9 +149,12 @@
             font-weight: 500;
             cursor: pointer;
             transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
         }
 
-        .btn-clear:hover {
+        .btn-header:hover {
             background: var(--bg-surface);
             color: var(--text-primary);
             border-color: #475569;
@@ -223,14 +242,12 @@
             box-shadow: var(--shadow-sm);
         }
 
-        /* Emergency red highlight */
         .msg-row.emergency .msg-content {
             border: 1.5px solid var(--accent-red);
             background: rgba(239, 68, 68, 0.08);
             box-shadow: 0 0 20px rgba(239, 68, 68, 0.25);
         }
 
-        /* Markdown elements inside assistant message */
         .msg-content h1, .msg-content h2, .msg-content h3 {
             color: #f1f5f9;
             margin-top: 12px;
@@ -286,6 +303,7 @@
             margin-bottom: 8px;
             background: linear-gradient(90deg, #38bdf8, #818cf8);
             -webkit-background-clip: text;
+            background-clip: text;
             -webkit-text-fill-color: transparent;
         }
 
@@ -435,6 +453,93 @@
             color: var(--text-muted);
         }
 
+        /* Modal for Backend API Settings */
+        .modal-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(4px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 50;
+            padding: 16px;
+        }
+
+        .modal-card {
+            background: #0f172a;
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            max-width: 480px;
+            width: 100%;
+            padding: 24px;
+            box-shadow: var(--shadow-lg);
+            animation: fadeIn 0.2s ease-out;
+        }
+
+        .modal-card h3 {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .modal-card p {
+            font-size: 0.82rem;
+            color: var(--text-secondary);
+            margin-bottom: 16px;
+            line-height: 1.5;
+        }
+
+        .modal-input-group {
+            margin-bottom: 16px;
+        }
+
+        .modal-input-group label {
+            display: block;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 6px;
+        }
+
+        .modal-input {
+            width: 100%;
+            background: var(--bg-surface);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 10px 14px;
+            color: #fff;
+            font-size: 0.88rem;
+            outline: none;
+        }
+
+        .modal-input:focus {
+            border-color: var(--accent-cyan);
+        }
+
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #0284c7, #06b6d4);
+            border: none;
+            color: #fff;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.82rem;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
         @media (max-width: 640px) {
             header { padding: 10px 14px; }
             .brand-text h1 { font-size: 0.95rem; }
@@ -458,11 +563,12 @@
             </div>
         </div>
         <div class="header-actions">
-            <div class="status-badge">
+            <div class="status-badge" id="statusBadge" title="Backend Connection Status">
                 <div class="pulse-dot"></div>
-                <span>Gemini Active</span>
+                <span id="statusText">Checking Backend...</span>
             </div>
-            <button class="btn-clear" id="clearBtn" title="Start new session">Clear</button>
+            <button class="btn-header" id="settingsBtn" title="Configure Backend API URL">⚙️ API URL</button>
+            <button class="btn-header" id="clearBtn" title="Start new session">Clear</button>
         </div>
     </header>
 
@@ -517,14 +623,81 @@
         </div>
     </footer>
 
+    <!-- Backend Settings Modal -->
+    <div class="modal-backdrop" id="settingsModal">
+        <div class="modal-card">
+            <h3>⚙️ Backend API Endpoint</h3>
+            <p>If you have deployed the backend separately (e.g., on Render, Railway, or Vercel), paste the backend base URL below.</p>
+            <div class="modal-input-group">
+                <label for="apiUrlInput">Backend Base URL</label>
+                <input type="text" id="apiUrlInput" class="modal-input" placeholder="e.g. https://mediassist-backend.onrender.com or http://localhost:8000">
+            </div>
+            <div class="modal-actions">
+                <button class="btn-header" id="modalResetBtn">Reset to Default</button>
+                <button class="btn-header" id="modalCloseBtn">Cancel</button>
+                <button class="btn-primary" id="modalSaveBtn">Save & Test</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         const chatContainer = document.getElementById('chatContainer');
         const userInput = document.getElementById('userInput');
         const sendBtn = document.getElementById('sendBtn');
         const clearBtn = document.getElementById('clearBtn');
         const welcomeCard = document.getElementById('welcomeCard');
+        const statusBadge = document.getElementById('statusBadge');
+        const statusText = document.getElementById('statusText');
+        const settingsBtn = document.getElementById('settingsBtn');
+        const settingsModal = document.getElementById('settingsModal');
+        const apiUrlInput = document.getElementById('apiUrlInput');
+        const modalCloseBtn = document.getElementById('modalCloseBtn');
+        const modalResetBtn = document.getElementById('modalResetBtn');
+        const modalSaveBtn = document.getElementById('modalSaveBtn');
 
         let isGenerating = false;
+
+        // Resolve Backend API Base URL
+        function getApiBaseUrl() {
+            const saved = localStorage.getItem('mediassist_api_base_url');
+            if (saved && saved.trim()) return saved.trim().replace(/\/+$/, '');
+            if (window.API_BASE_URL && window.API_BASE_URL.trim()) return window.API_BASE_URL.trim().replace(/\/+$/, '');
+            return '';
+        }
+
+        function setApiBaseUrl(url) {
+            if (!url) {
+                localStorage.removeItem('mediassist_api_base_url');
+            } else {
+                localStorage.setItem('mediassist_api_base_url', url.trim().replace(/\/+$/, ''));
+            }
+        }
+
+        // Test Backend Health
+        async function checkBackendHealth() {
+            const base = getApiBaseUrl();
+            const healthUrl = (base ? base : '') + '/api/health';
+            statusText.textContent = 'Checking...';
+            statusBadge.className = 'status-badge';
+
+            try {
+                const res = await fetch(healthUrl, { method: 'GET' });
+                if (res.ok) {
+                    const data = await res.json();
+                    statusBadge.className = 'status-badge';
+                    statusText.textContent = data.google_api_key_configured ? 'Backend Active' : 'API Key Missing';
+                    if (!data.google_api_key_configured) {
+                        statusBadge.classList.add('warning');
+                    }
+                } else {
+                    statusBadge.className = 'status-badge warning';
+                    statusText.textContent = `HTTP ${res.status}`;
+                }
+            } catch (e) {
+                statusBadge.className = 'status-badge offline';
+                statusText.textContent = 'Backend Offline';
+            }
+        }
 
         // Auto resize textarea
         userInput.addEventListener('input', function() {
@@ -533,7 +706,6 @@
             sendBtn.disabled = !this.value.trim() || isGenerating;
         });
 
-        // Submit on Enter (without Shift)
         userInput.addEventListener('keydown', function(e) {
             if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
@@ -549,6 +721,34 @@
             userInput.value = '';
             userInput.style.height = '52px';
             sendBtn.disabled = false;
+        });
+
+        // Settings Modal Handlers
+        settingsBtn.addEventListener('click', () => {
+            apiUrlInput.value = getApiBaseUrl();
+            settingsModal.style.display = 'flex';
+            apiUrlInput.focus();
+        });
+
+        modalCloseBtn.addEventListener('click', () => {
+            settingsModal.style.display = 'none';
+        });
+
+        modalResetBtn.addEventListener('click', () => {
+            setApiBaseUrl('');
+            apiUrlInput.value = '';
+            settingsModal.style.display = 'none';
+            checkBackendHealth();
+        });
+
+        modalSaveBtn.addEventListener('click', () => {
+            setApiBaseUrl(apiUrlInput.value);
+            settingsModal.style.display = 'none';
+            checkBackendHealth();
+        });
+
+        settingsModal.addEventListener('click', (e) => {
+            if (e.target === settingsModal) settingsModal.style.display = 'none';
         });
 
         function usePrompt(text) {
@@ -567,15 +767,16 @@
             userInput.value = '';
             userInput.style.height = '52px';
 
-            // Append User Message
             appendUserMessage(query);
 
-            // Append Typing Indicator
             const typingRow = appendTypingIndicator();
             scrollToBottom();
 
+            const base = getApiBaseUrl();
+            const endpoint = (base ? base : '') + '/api/chat';
+
             try {
-                const response = await fetch('/api/chat', {
+                const response = await fetch(endpoint, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ message: query })
@@ -590,9 +791,11 @@
                 appendAssistantMessage(data.reply, data.is_emergency);
             } catch (err) {
                 typingRow.remove();
+                const baseInfo = base ? `Backend configured at: \`${base}\`` : `Backend configured at current origin (relative path)`;
                 appendAssistantMessage(
                     `⚠️ **Connection Notice:** Unable to reach clinical engine (${err.message}).\n\n` +
-                    `Please check your network connection or verify that the \`GOOGLE_API_KEY\` is configured in Vercel Environment Variables.`,
+                    `${baseInfo}\n\n` +
+                    `*If your backend is hosted separately (e.g. Render, Railway), click **⚙️ API URL** at the top right to verify or update your backend URL.*`,
                     false
                 );
             } finally {
@@ -645,6 +848,9 @@
                 tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
             );
         }
+
+        // Run initial health check on load
+        window.addEventListener('DOMContentLoaded', checkBackendHealth);
     </script>
 </body>
 </html>

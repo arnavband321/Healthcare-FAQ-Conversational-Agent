@@ -4,16 +4,21 @@ import json
 import urllib.request
 from typing import Optional
 from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse, FileResponse
+from fastapi.responses import HTMLResponse, FileResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from dotenv import load_dotenv
 
+# Load environment variables from .env file if present
 load_dotenv()
 
-app = FastAPI(title="MediAssist Clinical Triage AI")
+app = FastAPI(
+    title="MediAssist Clinical Triage AI Backend",
+    description="Evidence-based clinical triage, emergency red-flag screening, and OTC guidance API.",
+    version="2.0.0"
+)
 
-# Enable CORS for cross-device support
+# Enable CORS for cross-origin frontend deployment
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -66,21 +71,26 @@ SYSTEM_PROMPT = (
     "- Specific warning signs requiring immediate emergency or ER care.\n"
 )
 
+# Ordered list of Gemini models to attempt with fallbacks
 MODELS_TO_TRY = [
+    "gemini-2.5-flash",
+    "gemini-2.0-flash",
+    "gemini-1.5-flash",
+    "gemini-1.5-pro",
     "gemini-3.6-flash",
     "gemini-3.7-flash",
-    "gemini-3.8-flash",
-    "gemini-3.5-flash",
-    "gemini-flash-latest",
+    "gemini-flash-latest"
 ]
 
 def call_gemini_api(prompt_text: str, api_key: str) -> str:
-    """Calls Google Gemini using the google.genai Client with fallback."""
+    """Calls Google Gemini using the official google.genai Client with REST fallback."""
     if not api_key:
         raise ValueError("GOOGLE_API_KEY environment variable is not configured.")
 
+    # 1. Attempt using official google-genai SDK
     try:
-        from google import genai
+        import importlib
+        genai = importlib.import_module("google.genai")
         client = genai.Client(api_key=api_key)
         for model in MODELS_TO_TRY:
             try:
@@ -88,12 +98,12 @@ def call_gemini_api(prompt_text: str, api_key: str) -> str:
                 if res and res.text:
                     return res.text
             except Exception as e:
-                print(f"[-] Model '{model}' error: {e}")
+                print(f"[-] Model '{model}' failed: {e}")
                 continue
     except Exception as e:
-        print(f"[!] SDK error: {e}")
+        print(f"[!] SDK initialization error: {e}")
 
-    # REST fallback
+    # 2. REST HTTP API Fallback
     for model in MODELS_TO_TRY:
         try:
             url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
@@ -116,9 +126,11 @@ def call_gemini_api(prompt_text: str, api_key: str) -> str:
                     parts = candidates[0].get("content", {}).get("parts", [])
                     if parts and "text" in parts[0]:
                         return parts[0]["text"]
-        except Exception:
+        except Exception as e:
+            print(f"[-] REST fallback for '{model}' failed: {e}")
             continue
-    raise RuntimeError("All Gemini models failed.")
+
+    raise RuntimeError("All Gemini models and REST endpoints failed.")
 
 # Local clinical FAQ fallback
 FAQ_KNOWLEDGE = [
@@ -164,13 +176,30 @@ def get_faq_fallback(query: str) -> str:
 class ChatRequest(BaseModel):
     message: str
 
+@app.get("/")
+def root():
+    """Serves the frontend index.html if locally present, or API status information."""
+    local_index = os.path.join(os.path.dirname(__file__), "..", "frontend", "index.html")
+    if os.path.exists(local_index):
+        return FileResponse(local_index, media_type="text/html")
+    
+    return JSONResponse({
+        "status": "online",
+        "service": "MediAssist Clinical AI Backend",
+        "endpoints": {
+            "health": "/api/health",
+            "chat": "/api/chat"
+        },
+        "docs": "/docs"
+    })
+
 @app.get("/api/health")
 def health_check():
-    key_configured = bool(GOOGLE_API_KEY)
+    key = os.getenv("GOOGLE_API_KEY", GOOGLE_API_KEY).strip()
     return {
         "status": "healthy",
         "service": "MediAssist Clinical AI",
-        "google_api_key_configured": key_configured
+        "google_api_key_configured": bool(key)
     }
 
 @app.post("/api/chat")
@@ -216,11 +245,3 @@ async def chat_endpoint(payload: ChatRequest):
         "triage_level": 3 if "Level 3" in reply_text else (2 if "Level 2" in reply_text else 1),
         "is_emergency": False
     }
-
-# Serve the static frontend on root
-@app.get("/")
-def serve_index():
-    index_path = os.path.join(os.path.dirname(__file__), "index.html")
-    if os.path.exists(index_path):
-        return FileResponse(index_path, media_type="text/html")
-    return HTMLResponse("<h1>MediAssist Clinical AI is running</h1>")
