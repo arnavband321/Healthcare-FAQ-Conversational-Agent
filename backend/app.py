@@ -27,7 +27,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY", "").strip()
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY", "").strip().strip("'").strip('"')
+if not GOOGLE_API_KEY:
+    print("[WARNING] GOOGLE_API_KEY is not set or empty. Gemini API calls will fail and fallback to offline FAQ.")
+else:
+    print(f"[INFO] GOOGLE_API_KEY loaded ({len(GOOGLE_API_KEY)} chars, ends with ...{GOOGLE_API_KEY[-4:]})")
 
 # Red flag symptoms screening
 RED_FLAGS = [
@@ -72,20 +76,23 @@ SYSTEM_PROMPT = (
 )
 
 # Ordered list of Gemini models to attempt with fallbacks
+# Verified production models first, then experimental ones
 MODELS_TO_TRY = [
     "gemini-2.5-flash",
     "gemini-2.0-flash",
     "gemini-1.5-flash",
-    "gemini-1.5-pro",
-    "gemini-3.6-flash",
+    "gemini-flash-latest",
+    "gemini-3.8-flash",
     "gemini-3.7-flash",
-    "gemini-flash-latest"
+    "gemini-3.6-flash",
+    "gemini-3.5-flash",
 ]
 
 def call_gemini_api(prompt_text: str, api_key: str) -> str:
     """Calls Google Gemini using the official google.genai Client with REST fallback."""
     if not api_key:
-        raise ValueError("GOOGLE_API_KEY environment variable is not configured.")
+        print("[ERROR] call_gemini_api invoked with empty API key.")
+        raise ValueError("GOOGLE_API_KEY environment variable is not configured or is empty.")
 
     # 1. Attempt using official google-genai SDK
     try:
@@ -98,10 +105,10 @@ def call_gemini_api(prompt_text: str, api_key: str) -> str:
                 if res and res.text:
                     return res.text
             except Exception as e:
-                print(f"[-] Model '{model}' failed: {e}")
+                print(f"[-] SDK Model '{model}' failed with {type(e).__name__}: {e}")
                 continue
     except Exception as e:
-        print(f"[!] SDK initialization error: {e}")
+        print(f"[!] SDK initialization error ({type(e).__name__}): {e}")
 
     # 2. REST HTTP API Fallback
     for model in MODELS_TO_TRY:
@@ -111,7 +118,7 @@ def call_gemini_api(prompt_text: str, api_key: str) -> str:
                 "contents": [{"parts": [{"text": prompt_text}]}],
                 "generationConfig": {
                     "temperature": 0.2,
-                    "maxOutputTokens": 2048
+                    "maxOutputTokens": 3000
                 }
             }).encode("utf-8")
             req = urllib.request.Request(
@@ -127,7 +134,7 @@ def call_gemini_api(prompt_text: str, api_key: str) -> str:
                     if parts and "text" in parts[0]:
                         return parts[0]["text"]
         except Exception as e:
-            print(f"[-] REST fallback for '{model}' failed: {e}")
+            print(f"[-] REST Model '{model}' failed with {type(e).__name__}: {e}")
             continue
 
     raise RuntimeError("All Gemini models and REST endpoints failed.")
@@ -226,7 +233,7 @@ async def chat_endpoint(payload: ChatRequest):
         }
 
     # Step 2: Clinical Gemini Analysis
-    api_key = os.getenv("GOOGLE_API_KEY", GOOGLE_API_KEY).strip()
+    api_key = os.getenv("GOOGLE_API_KEY", GOOGLE_API_KEY).strip().strip("'").strip('"')
     prompt = f"{SYSTEM_PROMPT}\n\nPatient Query: {user_query}"
 
     try:
